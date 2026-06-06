@@ -1,0 +1,326 @@
+// Prisma Schema — AI-HRMS (SQLite for local dev, swap to postgresql for prod)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────
+// ENUMS  (SQLite stores as String)
+// ─────────────────────────────────────────
+
+// Role values: MANAGEMENT_ADMIN | SENIOR_MANAGER | HR_RECRUITER | EMPLOYEE
+// EmploymentStatus: ACTIVE | INACTIVE | ON_LEAVE | TERMINATED | PROBATION
+// AttendanceStatus: PRESENT | ABSENT | LATE | HALF_DAY | WORK_FROM_HOME | ON_LEAVE
+// LeaveType: ANNUAL | SICK | CASUAL | MATERNITY | PATERNITY | UNPAID
+// LeaveStatus: PENDING | APPROVED | REJECTED | CANCELLED
+// PayrollStatus: PENDING | PROCESSING | COMPLETED | FAILED
+// ApplicationStatus: APPLIED | SCREENING | INTERVIEW_SCHEDULED | INTERVIEW_COMPLETED | OFFER_SENT | HIRED | REJECTED
+// JobStatus: DRAFT | OPEN | CLOSED | ON_HOLD
+// PerformanceRating: EXCEPTIONAL | EXCEEDS_EXPECTATIONS | MEETS_EXPECTATIONS | NEEDS_IMPROVEMENT | UNSATISFACTORY
+// AnomalyType: EARLY_CHECKOUT | LATE_CHECKIN | MISSED_CHECKOUT | DUPLICATE_ENTRY | LOCATION_MISMATCH | OVERTIME_EXCESS
+
+model Department {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  code        String   @unique
+  description String?
+  managerId   String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  manager   Employee?  @relation("DeptManager", fields: [managerId], references: [id])
+  employees Employee[] @relation("DeptEmployees")
+  jobs      Job[]
+
+  @@index([code])
+}
+
+model Employee {
+  id               String   @id @default(uuid())
+  employeeId       String   @unique
+  firstName        String
+  lastName         String
+  email            String   @unique
+  passwordHash     String
+  phone            String?
+  dateOfBirth      DateTime?
+  gender           String?
+  address          String?  // JSON stored as string in SQLite
+  profileImage     String?
+  role             String   @default("EMPLOYEE")
+  status           String   @default("ACTIVE")
+  hireDate         DateTime
+  terminationDate  DateTime?
+  salary           Float
+  position         String
+  departmentId     String?
+  managerId        String?
+  refreshToken     String?
+  lastLogin        DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  department         Department?         @relation("DeptEmployees", fields: [departmentId], references: [id])
+  managedDept        Department?         @relation("DeptManager")
+  manager            Employee?           @relation("Reports", fields: [managerId], references: [id])
+  reports            Employee[]          @relation("Reports")
+  attendance         Attendance[]
+  leaveRequests      LeaveRequest[]
+  payrollRecords     PayrollRecord[]
+  performanceReviews PerformanceReview[] @relation("ReviewedEmployee")
+  reviewsGiven       PerformanceReview[] @relation("Reviewer")
+  anomalies          AttendanceAnomaly[]
+  notifications      Notification[]
+
+  @@index([email])
+  @@index([employeeId])
+  @@index([departmentId])
+  @@index([role])
+  @@index([status])
+}
+
+model Attendance {
+  id            String   @id @default(uuid())
+  employeeId    String
+  date          DateTime
+  checkIn       DateTime?
+  checkOut      DateTime?
+  status        String   @default("PRESENT")
+  workHours     Float?
+  overtime      Float?
+  location      String?
+  notes         String?
+  isManualEntry Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  employee  Employee            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  anomalies AttendanceAnomaly[]
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([date])
+  @@index([status])
+}
+
+model AttendanceAnomaly {
+  id           String   @id @default(uuid())
+  attendanceId String
+  employeeId   String
+  anomalyType  String
+  severity     Int      @default(1)
+  description  String
+  aiConfidence Float    @default(0.0)
+  resolved     Boolean  @default(false)
+  resolvedBy   String?
+  resolvedAt   DateTime?
+  createdAt    DateTime @default(now())
+
+  attendance Attendance @relation(fields: [attendanceId], references: [id])
+  employee   Employee   @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
+  @@index([resolved])
+}
+
+model LeaveRequest {
+  id             String   @id @default(uuid())
+  employeeId     String
+  leaveType      String
+  startDate      DateTime
+  endDate        DateTime
+  days           Int
+  reason         String
+  status         String   @default("PENDING")
+  approvedBy     String?
+  approvedAt     DateTime?
+  rejectedReason String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+model PayrollRecord {
+  id             String   @id @default(uuid())
+  employeeId     String
+  period         String
+  baseSalary     Float
+  allowances     Float    @default(0)
+  overtime       Float    @default(0)
+  bonuses        Float    @default(0)
+  deductions     String   // JSON
+  grossPay       Float
+  netPay         Float
+  status         String   @default("PENDING")
+  processedAt    DateTime?
+  paymentMethod  String?
+  transactionRef String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, period])
+  @@index([employeeId])
+  @@index([period])
+  @@index([status])
+}
+
+model PayrollConfig {
+  id            String   @id @default(cuid())
+  country       String
+  currency      String
+  taxBrackets   String   // JSON
+  pfRate        Float
+  insuranceRate Float
+  overtimeRate  Float    @default(1.5)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model PerformanceReview {
+  id             String   @id @default(uuid())
+  employeeId     String
+  reviewerId     String
+  reviewPeriod   String
+  rating         String
+  score          Float
+  goals          String   // JSON
+  achievements   String?
+  areasToImprove String?
+  peerFeedback   String?
+  sentimentScore Float?
+  aiInsights     String?  // JSON
+  isAiGenerated  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  employee Employee @relation("ReviewedEmployee", fields: [employeeId], references: [id])
+  reviewer Employee @relation("Reviewer", fields: [reviewerId], references: [id])
+
+  @@unique([employeeId, reviewPeriod])
+  @@index([employeeId])
+  @@index([reviewPeriod])
+}
+
+model PerformanceKPI {
+  id         String   @id @default(uuid())
+  employeeId String
+  metric     String
+  value      Float
+  target     Float
+  period     String
+  recordedAt DateTime @default(now())
+
+  @@index([employeeId])
+  @@index([period])
+}
+
+model Job {
+  id           String   @id @default(uuid())
+  title        String
+  description  String
+  requirements String   // JSON array stored as string
+  skills       String   // JSON array stored as string
+  experience   String
+  location     String
+  salaryMin    Float?
+  salaryMax    Float?
+  status       String   @default("OPEN")
+  departmentId String?
+  postedBy     String
+  closingDate  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  department   Department?   @relation(fields: [departmentId], references: [id])
+  applications Application[]
+
+  @@index([status])
+  @@index([departmentId])
+}
+
+model Application {
+  id              String   @id @default(uuid())
+  jobId           String
+  applicantName   String
+  applicantEmail  String
+  resumeUrl       String?
+  resumeText      String?
+  coverLetter     String?
+  status          String   @default("APPLIED")
+  aiScore         Float?
+  aiRankPosition  Int?
+  aiScreeningData String?  // JSON
+  interviewScore  Float?
+  interviewData   String?  // JSON
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  job        Job         @relation(fields: [jobId], references: [id])
+  interviews Interview[]
+
+  @@index([jobId])
+  @@index([status])
+}
+
+model Interview {
+  id            String   @id @default(uuid())
+  applicationId String
+  sessionId     String   @unique
+  transcript    String   // JSON
+  overallScore  Float?
+  sentimentScore Float?
+  aiAnalysis    String?  // JSON
+  duration      Int?
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id])
+
+  @@index([applicationId])
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  employeeId String
+  title      String
+  message    String
+  type       String
+  isRead     Boolean  @default(false)
+  metadata   String?  // JSON
+  createdAt  DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([isRead])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String
+  resource   String
+  resourceId String?
+  details    String?  // JSON
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([resource])
+  @@index([createdAt])
+}
