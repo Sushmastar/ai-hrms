@@ -28,7 +28,7 @@ GENERATION_CONFIG = genai.types.GenerationConfig(
 )
 
 
-def _get_model(model_name: str = "gemini-1.5-flash") -> genai.GenerativeModel:
+def _get_model(model_name: str = "gemini-2.5-flash") -> genai.GenerativeModel:
     """Get a configured Gemini model instance. Flash is free-tier friendly."""
     return genai.GenerativeModel(
         model_name=model_name,
@@ -46,7 +46,7 @@ def _get_model(model_name: str = "gemini-1.5-flash") -> genai.GenerativeModel:
 async def generate_text(
     prompt: str,
     system_instruction: Optional[str] = None,
-    model_name: str = "gemini-1.5-flash",
+    model_name: str = "gemini-2.5-flash",
 ) -> str:
     """
     Generate text from Gemini with retry logic.
@@ -122,7 +122,7 @@ async def chat_session(history: list[dict], new_message: str, system_instruction
     history: list of {"role": "user"|"model", "parts": ["text"]}
     """
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
+        model_name="gemini-2.5-flash",
         generation_config=GENERATION_CONFIG,
         safety_settings=SAFE_SETTINGS,
         system_instruction=system_instruction,

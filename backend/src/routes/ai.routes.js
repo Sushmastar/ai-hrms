@@ -5,10 +5,11 @@ const { authenticate, authorize } = require('../middleware/auth');
 const ctrl = require('../controllers/ai.controller');
 
 const router = express.Router();
-router.use(authenticate);
 
-// Health check (no role needed — just needs auth)
+// Health check — BEFORE authenticate so no token needed
 router.get('/health', ctrl.checkAIHealth);
+
+router.use(authenticate);
 
 // Conversational Interview Bot
 router.post('/interview/start', authorize('HR_RECRUITER'), ctrl.startInterview);

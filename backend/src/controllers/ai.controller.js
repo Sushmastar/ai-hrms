@@ -34,7 +34,8 @@ const callAI = async (fn) => {
 const checkAIHealth = async (req, res) => {
   try {
     const response = await axios.get(`${process.env.AI_SERVICE_URL}/health`, { timeout: 5000 });
-    res.json({ status: 'online', ...response.data });
+    // AI service returns "healthy" — normalize to "online" for frontend
+    res.json({ ...response.data, status: 'online' });
   } catch {
     res.status(503).json({ status: 'offline', error: 'AI service unreachable' });
   }
@@ -59,8 +60,10 @@ const startInterview = async (req, res) => {
     applicant_name: application.applicantName,
     job_title: application.job.title,
     job_description: application.job.description,
-    job_requirements: application.job.requirements,
-  }, { timeout: 8000 }));
+    job_requirements: (() => {
+      try { return JSON.parse(application.job.requirements || '[]'); } catch { return []; }
+    })(),
+  }, { timeout: 30000 }));
 
   // Cache session state
   await cache.set(`interview:${sessionId}`, {
@@ -74,7 +77,7 @@ const startInterview = async (req, res) => {
     data: {
       applicationId,
       sessionId,
-      transcript: [{ role: 'assistant', content: result.data.opening_message, timestamp: new Date() }],
+      transcript: JSON.stringify([{ role: 'assistant', content: result.data.opening_message, timestamp: new Date() }]),
     },
   });
 
@@ -94,21 +97,25 @@ const sendInterviewMessage = async (req, res) => {
   const interview = await prisma.interview.findUnique({ where: { sessionId } });
   if (!interview) return res.status(StatusCodes.NOT_FOUND).json({ error: 'Interview not found' });
 
+  const transcriptArr = typeof interview.transcript === 'string'
+    ? JSON.parse(interview.transcript)
+    : interview.transcript;
+
   const result = await callAI(() => axios.post(`${AI_URL}/interview/respond`, {
     session_id: sessionId,
     user_message: message,
-    transcript: interview.transcript,
-  }, { timeout: 8000 }));
+    transcript: transcriptArr,
+  }, { timeout: 30000 }));
 
   const updatedTranscript = [
-    ...interview.transcript,
+    ...transcriptArr,
     { role: 'user', content: message, timestamp: new Date() },
     { role: 'assistant', content: result.data.response, timestamp: new Date() },
   ];
 
   await prisma.interview.update({
     where: { sessionId },
-    data: { transcript: updatedTranscript },
+    data: { transcript: JSON.stringify(updatedTranscript) },
   });
 
   res.json({
@@ -124,17 +131,21 @@ const endInterview = async (req, res) => {
   const interview = await prisma.interview.findUnique({ where: { sessionId } });
   if (!interview) return res.status(StatusCodes.NOT_FOUND).json({ error: 'Interview not found' });
 
+  const transcriptArr = typeof interview.transcript === 'string'
+    ? JSON.parse(interview.transcript)
+    : interview.transcript;
+
   const result = await callAI(() => axios.post(`${AI_URL}/interview/evaluate`, {
     session_id: sessionId,
-    transcript: interview.transcript,
-  }, { timeout: 8000 }));
+    transcript: transcriptArr,
+  }, { timeout: 30000 }));
 
   await prisma.interview.update({
     where: { sessionId },
     data: {
       overallScore: result.data.overall_score,
       sentimentScore: result.data.sentiment_score,
-      aiAnalysis: result.data.analysis,
+      aiAnalysis: JSON.stringify(result.data.analysis),
       duration: result.data.duration_seconds,
       completedAt: new Date(),
     },
@@ -144,7 +155,7 @@ const endInterview = async (req, res) => {
     where: { id: interview.applicationId },
     data: {
       interviewScore: result.data.overall_score,
-      interviewData: result.data,
+      interviewData: JSON.stringify(result.data),
       status: 'INTERVIEW_COMPLETED',
     },
   });
@@ -199,7 +210,7 @@ const predictPerformance = async (req, res) => {
       target: Number(k.target),
       period: k.period,
     })),
-  }, { timeout: 8000 }));
+  }, { timeout: 30000 }));
 
   res.json(result.data);
 };
@@ -231,7 +242,7 @@ const analyzePerformance = async (req, res) => {
       employee_id: employee.id,
       review_period: reviewPeriod,
       peer_feedback: peerFeedback,
-    }, { timeout: 8000 });
+    }, { timeout: 30000 });
     res.json(result.data);
   } catch (err) {
     if (err.code === 'ECONNREFUSED' || err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT') {
@@ -270,7 +281,7 @@ const generateShiftSchedule = async (req, res) => {
     leaves,
     week_start: weekStartDate,
     constraints: constraints || {},
-  }, { timeout: 8000 }));
+  }, { timeout: 30000 }));
 
   res.json(result.data);
 };

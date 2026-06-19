@@ -132,7 +132,8 @@ const triggerAIScreening = async (req, res) => {
     const result = await axios.post(`${process.env.AI_SERVICE_URL}/resume/screen`, {
       application_id: application.id,
       resume_url: application.resumeUrl,
-      resume_text: application.resumeText,
+      // Use cover letter as resume text if no PDF uploaded
+      resume_text: application.resumeText || application.coverLetter || `Applicant: ${application.applicantName}. Applied for ${application.job.title}.`,
       job_title: application.job.title,
       job_description: application.job.description,
       job_requirements: p(application.job.requirements),

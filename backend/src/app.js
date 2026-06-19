@@ -22,6 +22,7 @@ const recruitmentRoutes = require('./routes/recruitment.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
 const aiRoutes = require('./routes/ai.routes');
 const notificationRoutes = require('./routes/notification.routes');
+const leaveRoutes = require('./routes/leave.routes');
 
 const app = express();
 
@@ -72,6 +73,7 @@ app.get('/health', (req, res) => {
 });
 
 // ─── API Routes ────────────────────────────────────────────────────────────────
+
 const API = '/api';
 app.use(`${API}/auth`, authRoutes);
 app.use(`${API}/employees`, employeeRoutes);
@@ -82,6 +84,7 @@ app.use(`${API}/recruitment`, recruitmentRoutes);
 app.use(`${API}/analytics`, analyticsRoutes);
 app.use(`${API}/ai`, aiRoutes);
 app.use(`${API}/notifications`, notificationRoutes);
+app.use(`${API}/leaves`, leaveRoutes);
 
 // ─── Error Handling ────────────────────────────────────────────────────────────
 app.use(notFound);

@@ -5,43 +5,48 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   LayoutDashboard, Users, Clock, DollarSign, TrendingUp, Briefcase,
-  Bot, Settings, LogOut, Bell, Menu, X, ChevronDown, Building2,
+  Bot, Settings, LogOut, Bell, Menu, X, ChevronDown, Building2, Calendar,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import api from '@/lib/api';
 
 const NAV_BY_ROLE = {
   MANAGEMENT_ADMIN: [
-    { label: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
-    { label: 'Employees', href: '/employees', icon: Users },
-    { label: 'Attendance', href: '/attendance', icon: Clock },
-    { label: 'Payroll', href: '/payroll', icon: DollarSign },
-    { label: 'Performance', href: '/performance', icon: TrendingUp },
-    { label: 'Recruitment', href: '/recruitment', icon: Briefcase },
-    { label: 'AI Tools', href: '/ai', icon: Bot },
-    { label: 'Settings', href: '/settings', icon: Settings },
+    { label: 'Dashboard',    href: '/dashboard/admin',    icon: LayoutDashboard },
+    { label: 'Employees',    href: '/employees',           icon: Users           },
+    { label: 'Attendance',   href: '/attendance',          icon: Clock           },
+    { label: 'Leaves',       href: '/leaves',              icon: Calendar        },
+    { label: 'Payroll',      href: '/payroll',             icon: DollarSign      },
+    { label: 'Performance',  href: '/performance',         icon: TrendingUp      },
+    { label: 'Recruitment',  href: '/recruitment',         icon: Briefcase       },
+    { label: 'AI Tools',     href: '/ai',                  icon: Bot             },
+    { label: 'Settings',     href: '/settings',            icon: Settings        },
   ],
   SENIOR_MANAGER: [
-    { label: 'Dashboard', href: '/dashboard/manager', icon: LayoutDashboard },
-    { label: 'My Team', href: '/employees', icon: Users },
-    { label: 'Attendance', href: '/attendance', icon: Clock },
-    { label: 'Performance', href: '/performance', icon: TrendingUp },
-    { label: 'AI Analytics', href: '/ai/analytics', icon: Bot },
+    { label: 'Dashboard',    href: '/dashboard/manager',  icon: LayoutDashboard },
+    { label: 'My Team',      href: '/employees',           icon: Users           },
+    { label: 'Attendance',   href: '/attendance',          icon: Clock           },
+    { label: 'Leaves',       href: '/leaves',              icon: Calendar        },
+    { label: 'Performance',  href: '/performance',         icon: TrendingUp      },
+    { label: 'AI Analytics', href: '/ai/analytics',        icon: Bot             },
   ],
   HR_RECRUITER: [
-    { label: 'Dashboard', href: '/dashboard/hr', icon: LayoutDashboard },
-    { label: 'Employees', href: '/employees', icon: Users },
-    { label: 'Attendance', href: '/attendance', icon: Clock },
-    { label: 'Payroll', href: '/payroll', icon: DollarSign },
-    { label: 'Recruitment', href: '/recruitment', icon: Briefcase },
-    { label: 'AI Tools', href: '/ai', icon: Bot },
+    { label: 'Dashboard',    href: '/dashboard/hr',       icon: LayoutDashboard },
+    { label: 'Employees',    href: '/employees',           icon: Users           },
+    { label: 'Attendance',   href: '/attendance',          icon: Clock           },
+    { label: 'Leaves',       href: '/leaves',              icon: Calendar        },
+    { label: 'Payroll',      href: '/payroll',             icon: DollarSign      },
+    { label: 'Recruitment',  href: '/recruitment',         icon: Briefcase       },
+    { label: 'AI Tools',     href: '/ai',                  icon: Bot             },
   ],
   EMPLOYEE: [
-    { label: 'Dashboard', href: '/dashboard/employee', icon: LayoutDashboard },
-    { label: 'My Profile', href: '/profile', icon: Users },
-    { label: 'Attendance', href: '/my-attendance', icon: Clock },
-    { label: 'Pay Slips', href: '/my-payroll', icon: DollarSign },
-    { label: 'Performance', href: '/my-performance', icon: TrendingUp },
+    { label: 'Dashboard',    href: '/dashboard/employee', icon: LayoutDashboard },
+    { label: 'My Profile',   href: '/profile',             icon: Users           },
+    { label: 'Attendance',   href: '/my-attendance',       icon: Clock           },
+    { label: 'My Leaves',    href: '/my-leaves',           icon: Calendar        },
+    { label: 'Pay Slips',    href: '/my-payroll',          icon: DollarSign      },
+    { label: 'Performance',  href: '/my-performance',      icon: TrendingUp      },
+    { label: 'Jobs',         href: '/recruitment',         icon: Briefcase       },
   ],
 };
 
